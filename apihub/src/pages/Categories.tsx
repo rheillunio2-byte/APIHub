@@ -1,0 +1,4 @@
+import { Link } from "react-router-dom";
+import PageHeader from "../components/common/PageHeader";
+import { categories,apis } from "../data/apis";
+export default function Categories(){return <div className="page"><PageHeader eyebrow="DISCOVER BY DOMAIN" title="API Categories" description="Explore the ecosystem by the problem you're trying to solve."/><div className="category-page-grid">{categories.map((c,i)=>{const count=apis.filter(a=>a.category===c).length;return <Link to={`/explore?category=${encodeURIComponent(c)}`} className="category-large" key={c}><div className="category-symbol">{["✦","☁","◈","⌖","▤","▶","▧","⌘","◎","▦","♟","◷","♡","↗","⌁","⌬","◉","⌖","✧","◌","⌘","◈","▣","⌗"][i%24]}</div><h3>{c}</h3><p>{count?`${count} starter API${count===1?"":"s"} in the catalog`:"Category ready for catalog expansion"}</p><span className="text-link">Browse APIs →</span></Link>})}</div></div>}
