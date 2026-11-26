@@ -20,7 +20,7 @@ export default function CodeGenerator() {
   const [body, setBody] = useState('{\n  "name": "example"\n}');
   const needsKey = api.auth === "API key" || api.auth === "OAuth";
   const hasBody = method !== "GET";
-  const headers = useMemo(() => (needsKey ? { Authorization: "Bearer YOUR_API_KEY" } : {}), [needsKey]);
+  const headers: Record<string, string> = {};
   const code = useMemo(() => generateSnippet({ method, url: endpoint, headers, body: hasBody ? body : undefined }, language), [method, endpoint, headers, body, hasBody, language]);
 
   const pick = (id: string) => { const a = apis.find((x) => x.id === id); setApiId(id); setEndpoint(a?.exampleEndpoint || a?.baseUrl || ""); setMethod("GET"); };
