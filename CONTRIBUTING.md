@@ -61,7 +61,7 @@ git clone https://github.com/YOUR-USERNAME/APIHub.git
 **3. Navigate to the project directory**
 
 ```bash
-cd APIHub
+cd APIHub/apihub
 ```
 
 **4. Install dependencies**
@@ -334,6 +334,17 @@ If you discover a security vulnerability, avoid publicly sharing sensitive explo
 ## 🧪 Testing
 
 Before submitting a contribution, test your changes.
+
+### Automated Tests
+
+From the `apihub/` folder (Node 22.6+):
+
+```bash
+npm test          # unit and integration tests; must stay green
+npm run typecheck
+```
+
+New logic in `src/lib` or `supabase/functions` needs a test in `apihub/tests`. Never delete or weaken a test just to make it pass. API catalog changes must keep `tests/catalog-data.test.ts` green (no duplicates, valid URLs, no real-looking secrets, no "Verified" without a date).
 
 ### Functional Testing
 

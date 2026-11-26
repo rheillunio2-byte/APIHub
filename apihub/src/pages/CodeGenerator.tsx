@@ -1,21 +1,58 @@
-import { useMemo,useState } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Copy,Download,RotateCcw } from "lucide-react";
+import { Copy, Download, RotateCcw } from "lucide-react";
 import PageHeader from "../components/common/PageHeader";
 import { apis } from "../data/apis";
-const languages=["JavaScript","TypeScript","Python","PHP","cURL","React"];
-function buildCode(url:string,language:string,method:string){
- const safe=url||"https://api.example.com/endpoint";
- if(language==="Python")return `import requests\n\nurl = "${safe}"\nresponse = requests.${method.toLowerCase()}(url, timeout=15)\nresponse.raise_for_status()\ndata = response.json()\nprint(data)`;
- if(language==="PHP")return `<?php\n$url = "${safe}";\n$ch = curl_init($url);\ncurl_setopt($ch, CURLOPT_RETURNTRANSFER, true);\n$response = curl_exec($ch);\nif ($response === false) { throw new Exception(curl_error($ch)); }\ncurl_close($ch);\n$data = json_decode($response, true);\nvar_dump($data);\n?>`;
- if(language==="cURL")return `curl --request ${method} \\\n  --url '${safe}' \\\n  --header 'Accept: application/json'`;
- if(language==="React")return `import { useEffect, useState } from "react";\n\nexport function ApiData() {\n  const [data, setData] = useState(null);\n  const [error, setError] = useState<string | null>(null);\n\n  useEffect(() => {\n    fetch("${safe}")\n      .then((response) => {\n        if (!response.ok) throw new Error(String(response.status));\n        return response.json();\n      })\n      .then(setData)\n      .catch((err) => setError(err.message));\n  }, []);\n\n  if (error) return <p role="alert">{error}</p>;\n  return <pre>{JSON.stringify(data, null, 2)}</pre>;\n}`;
- const ts=language==="TypeScript";
- return `${ts?"const url: string":"const url"} = "${safe}";\n\n${ts?"const response: Response":"const response"} = await fetch(url, { method: "${method}" });\nif (!response.ok) {\n  throw new Error(\`Request failed: ${"${response.status}"}\`);\n}\n\n${ts?"const data: unknown":"const data"} = await response.json();\nconsole.log(data);`;
-}
-export default function CodeGenerator(){
- const [params]=useSearchParams();const selected=apis.find(a=>a.id===params.get("api"));const [apiId,setApiId]=useState(selected?.id||"jsonplaceholder");const api=apis.find(a=>a.id===apiId)!;const [language,setLanguage]=useState("JavaScript");const [method,setMethod]=useState("GET");const [endpoint,setEndpoint]=useState(api.exampleEndpoint||api.baseUrl);const code=useMemo(()=>buildCode(endpoint,language,method),[endpoint,language,method]);
- return <div className="page"><PageHeader eyebrow="DEVELOPER TOOLS" title="Code Generator" description="Generate adaptable request examples for your preferred language."/>
- <div className="generator-layout"><section className="content-panel generator-config"><div className="eyebrow">CONFIGURATION</div><h2>Build your snippet</h2><label>API<select value={apiId} onChange={e=>{setApiId(e.target.value);const a=apis.find(x=>x.id===e.target.value);setEndpoint(a?.exampleEndpoint||a?.baseUrl||"")}}>{apis.map(a=><option key={a.id} value={a.id}>{a.name}</option>)}</select></label><label>Endpoint URL<input value={endpoint} onChange={e=>setEndpoint(e.target.value)}/></label><label>HTTP method<select value={method} onChange={e=>setMethod(e.target.value)}>{api.methods.map(m=><option key={m}>{m}</option>)}</select></label><label>Language<select value={language} onChange={e=>setLanguage(e.target.value)}>{languages.map(l=><option key={l}>{l}</option>)}</select></label><div className="notice-panel"><strong>Security reminder</strong><p>{api.auth==="API key"||api.auth==="OAuth"?"This API may require secret credentials. Add secrets on a trusted backend using environment variables; never hardcode them in browser code.":"Review provider docs for authentication, rate limits and usage terms before production use."}</p></div></section>
- <section className="content-panel code-preview"><div className="panel-heading"><div><div className="eyebrow">{language.toUpperCase()} · GENERATED EXAMPLE</div><h2>Integration snippet</h2></div><div className="response-actions"><button className="icon-button" onClick={()=>navigator.clipboard?.writeText(code)} title="Copy code"><Copy size={15}/></button><button className="icon-button" onClick={()=>{const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([code],{type:"text/plain"}));a.download=`apihub-example.${language==="Python"?"py":language==="PHP"?"php":language==="cURL"?"sh":language==="React"||language==="TypeScript"?"tsx":"js"}`;a.click();URL.revokeObjectURL(a.href)}} title="Download code"><Download size={15}/></button><button className="icon-button" onClick={()=>{setLanguage("JavaScript");setMethod("GET");setEndpoint(api.exampleEndpoint||api.baseUrl)}} title="Reset"><RotateCcw size={15}/></button></div></div><pre className="code-block"><code>{code}</code></pre><p className="muted-small">Starter code only. Validate endpoint behavior, authentication, error handling and provider terms before shipping.</p></section></div></div>;
+import { useDocumentTitle } from "../hooks/useDocumentTitle";
+import { useCopy } from "../components/common/Toast";
+import { FILE_EXTENSION, generateSnippet, LANGUAGES, type Language } from "../lib/codegen.ts";
+
+export default function CodeGenerator() {
+  useDocumentTitle("Code Generator", "Generate JavaScript, TypeScript, Python, PHP, cURL and React request snippets for any API in the catalog.");
+  const [params] = useSearchParams();
+  const copy = useCopy();
+  const initial = apis.find((a) => a.id === params.get("api")) ?? apis.find((a) => a.id === "jsonplaceholder") ?? apis[0];
+  const [apiId, setApiId] = useState(initial.id);
+  const api = apis.find((a) => a.id === apiId) ?? initial;
+  const [language, setLanguage] = useState<Language>("JavaScript");
+  const [method, setMethod] = useState("GET");
+  const [endpoint, setEndpoint] = useState(initial.exampleEndpoint || initial.baseUrl);
+  const [body, setBody] = useState('{\n  "name": "example"\n}');
+  const needsKey = api.auth === "API key" || api.auth === "OAuth";
+  const hasBody = method !== "GET";
+  const headers = useMemo(() => (needsKey ? { Authorization: "Bearer YOUR_API_KEY" } : {}), [needsKey]);
+  const code = useMemo(() => generateSnippet({ method, url: endpoint, headers, body: hasBody ? body : undefined }, language), [method, endpoint, headers, body, hasBody, language]);
+
+  const pick = (id: string) => { const a = apis.find((x) => x.id === id); setApiId(id); setEndpoint(a?.exampleEndpoint || a?.baseUrl || ""); setMethod("GET"); };
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([code], { type: "text/plain" }));
+    const a = document.createElement("a"); a.href = url; a.download = `apihub-example.${FILE_EXTENSION[language]}`; a.click(); URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="page">
+      <PageHeader eyebrow="DEVELOPER TOOLS" title="Code Generator" description="Generate adaptable request examples. Credentials are always replaced by placeholders." />
+      <div className="generator-layout">
+        <section className="content-panel generator-config">
+          <div className="eyebrow">CONFIGURATION</div><h2>Build your snippet</h2>
+          <label>API<select value={apiId} onChange={(e) => pick(e.target.value)}>{apis.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select></label>
+          <label>Endpoint URL<input value={endpoint} onChange={(e) => setEndpoint(e.target.value)} spellCheck={false} /></label>
+          <label>HTTP method<select value={method} onChange={(e) => setMethod(e.target.value)}>{api.methods.map((m) => <option key={m}>{m}</option>)}</select></label>
+          {hasBody && <label>Request body<textarea className="mono" rows={5} value={body} onChange={(e) => setBody(e.target.value)} spellCheck={false} /></label>}
+          <label>Language<select value={language} onChange={(e) => setLanguage(e.target.value as Language)}>{LANGUAGES.map((l) => <option key={l}>{l}</option>)}</select></label>
+          <div className="notice-panel"><strong>Security reminder</strong>
+            <p>{needsKey ? "This API needs credentials. The snippet uses a placeholder: load your real key from an environment variable on a server, never from front-end code." : "This API is listed as not needing a key. Still confirm current terms with the provider."}</p></div>
+        </section>
+        <section className="content-panel code-preview">
+          <div className="panel-heading"><div><div className="eyebrow">{language.toUpperCase()} · GENERATED EXAMPLE</div><h2>Integration snippet</h2></div>
+            <div className="response-actions">
+              <button className="icon-button" onClick={() => copy(code, "Code copied")} aria-label="Copy code"><Copy size={15} /></button>
+              <button className="icon-button" onClick={download} aria-label="Download code"><Download size={15} /></button>
+              <button className="icon-button" onClick={() => { setLanguage("JavaScript"); pick(api.id); }} aria-label="Reset"><RotateCcw size={15} /></button>
+            </div></div>
+          <pre className="code-block" tabIndex={0} aria-label="Generated code"><code>{code}</code></pre>
+        </section>
+      </div>
+    </div>
+  );
 }
