@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+# Sitemap is generated at build time when VITE_SITE_URL is set (see scripts/generate-sitemap.mjs).

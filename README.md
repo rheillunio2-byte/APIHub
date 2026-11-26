@@ -124,6 +124,16 @@ APIHUB aims to make API exploration more accessible, organized, and convenient f
 - Support API submission workflows.
 - Provide a place for managing API directory contributions.
 
+### ⚖️ Compare APIs
+- Compare up to four APIs side by side: category, authentication, pricing model, HTTPS, CORS, documentation and verification status.
+- Values come straight from the catalog; no benchmarks, uptime or pricing figures are invented.
+
+### 📖 Developer Resources
+- Beginner-friendly guides on REST, HTTP methods, JSON, authentication, error handling and API security, with copyable examples.
+
+### ⌨️ Experience
+- Command palette (`Ctrl`/`Cmd` + `K`), dark and light themes, toast notifications, skeleton loading states, keyboard-accessible controls and a skip link.
+
 ### 💾 Data Storage
 - Uses browser storage for supported locally saved information.
 - Provides a storage utility for application data.
@@ -154,309 +164,136 @@ APIHUB aims to make API exploration more accessible, organized, and convenient f
 
 ## 🚀 Getting Started
 
-You can run APIHUB locally by installing its project dependencies and starting the Vite development server.
+The application lives in the `apihub/` folder of this repository.
 
 ### Prerequisites
 
-Make sure you have:
+- [Node.js](https://nodejs.org/) 22 or newer (see `apihub/.nvmrc`) and npm.
+- Optional: a [Supabase](https://supabase.com/) project, only needed for the secure proxy and database features.
 
-- A computer running Windows, macOS, or Linux.
-- [Node.js](https://nodejs.org/) installed.
-- npm (included with Node.js).
-- Visual Studio Code or another code editor.
-- Git (optional).
-- An internet connection for external API requests.
-
-### Installation
-
-**1. Clone the repository**
+### Install and run
 
 ```bash
 git clone https://github.com/rheillunio2-byte/APIHub.git
-```
-
-**2. Navigate to the project folder**
-
-```bash
 cd APIHub/apihub
-```
-
-**3. Install dependencies**
-
-```bash
 npm install
+cp .env.example .env.local   # optional; the app runs without it
+npm run dev                  # http://localhost:5173
 ```
 
-If you're using Windows PowerShell and encounter an execution policy error with `npm`, use:
+On Windows PowerShell, use `npm.cmd` if script execution is restricted:
 
 ```powershell
-npm run dev
-```
-
-**4. Start the development server**
-
-```bash
-npm run dev
-```
-
-On Windows PowerShell, you can also use:
-
-```powershell
+npm.cmd install
 npm.cmd run dev
 ```
 
-**5. Open APIHUB**
+### Environment variables
 
-Vite will display a local development URL in your terminal, usually:
+All values are placeholders in `apihub/.env.example`. Never commit real credentials.
 
-```text
-http://localhost:5173
+| Variable | Where | Purpose |
+|---|---|---|
+| `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` | Browser | Enables "APIHub proxy" mode in the Playground and Status page. The anon key is designed to be public; the service-role key must never go in a `VITE_*` variable. |
+| `VITE_SITE_URL` | Build | Generates `sitemap.xml` and canonical URLs. Skipped when empty. |
+| `ALLOWED_ORIGINS`, `PROXY_RATE_LIMIT`, `PROXY_RATE_WINDOW_SECONDS` | Edge function secrets | Origin allow-list and per-client rate limit for `secure-proxy`. Set with `supabase secrets set`. |
+
+Without Supabase variables the app still works: the Playground sends requests directly from the browser (CORS applies) and the proxy option is shown as not configured.
+
+## 🧪 Testing
+
+```bash
+cd apihub
+npm test          # 57 unit/integration tests (node:test, no extra dependencies)
+npm run typecheck # tsc -b
+npm run build     # sitemap + type check + production build
+npm run test:sql  # Row Level Security tests; needs a local PostgreSQL (see tests/sql/run.sh)
 ```
 
-Open the displayed URL in your browser.
+What the tests cover: catalog filtering, sorting and pagination; catalog data quality (no duplicates, valid URLs, https flag consistency, no secrets in examples); code generation with credential masking; request history redaction; verification state classification; storage sanitising; the SSRF validator (private ranges, IPv6 forms, hostile hostnames, redirects) and the real `secure-proxy` handler (origin checks, DNS-rebinding defence, redirect re-validation, size caps, rate limits).
 
-**6. Start exploring!**
+There are **no browser/component/end-to-end tests yet**; the UI is verified manually. See [Limitations](#️-limitations).
 
-Browse APIs, experiment with requests, generate code, and organize your favorite services.
+## 🛡️ Security model
 
----
+- Playground and status checks validate every URL on the client **and** again on the server. Localhost, private ranges, link-local/cloud-metadata addresses, credentials in URLs, non-standard ports and non-HTTP schemes are refused.
+- The `secure-proxy` edge function resolves DNS itself and rejects hostnames that point at private space, re-validates every redirect hop, caps response size and time, drops `Set-Cookie`, enforces an origin allow-list and rate-limits per client.
+- Request history redacts credential headers, sensitive query parameters and JSON keys **before** anything is written to `localStorage`. Generated code replaces credentials with `YOUR_API_KEY`.
+- Response content is rendered as text nodes, never as HTML.
+- Supabase migrations enable Row Level Security (verified by `tests/sql`).
+- Known limit: DNS is resolved by the proxy and again by `fetch`, so DNS rebinding is mitigated but not impossible; deploy behind an egress firewall for defence in depth. This is not a claim that the application is completely secure.
 
-## 🕹️ How to Use
+## 🏗️ Architecture
 
-1. Launch APIHUB.
-2. Explore the Home dashboard.
-3. Navigate to Explore APIs.
-4. Search for an API that fits your project.
-5. Browse Categories to discover related services.
-6. Open an API to review its information.
-7. Use the Playground to experiment with API requests.
-8. Use the Code Generator to create request snippets.
-9. Save useful APIs to Favorites.
-10. Organize related APIs into Collections.
-11. Visit API Status to review available status information.
-12. Explore Admin and Submissions where applicable.
-
-**Tip:** Before integrating an API into your project, review its documentation, authentication requirements, rate limits, and usage policies.
-
----
-
-## 🔌 API Integration
-
-APIHUB is designed to help developers discover and experiment with external APIs.
-
-When working with an API, keep the following in mind:
-
-- Check the API's official documentation.
-- Verify the correct endpoint and HTTP method.
-- Include required request headers and parameters.
-- Check whether authentication is required.
-- Handle unsuccessful responses and network errors.
-- Respect API rate limits.
-- Avoid exposing private API keys in frontend code.
-- Review the API provider's terms of service.
-
-### Important Notes
-
-- API availability depends on the external provider.
-- Some APIs may require API keys or authentication.
-- Some services may restrict browser-based requests through CORS policies.
-- API rate limits may affect request results.
-- A successful request in the Playground does not guarantee that an API will always be available.
-
----
-
-## 📂 Project Structure
-
-```text
-APIHub/
-│
-├── public/
-│
-├── images/
-│   ├── Admin and Submissions.PNG
-│   ├── API Status.PNG
-│   ├── Categories.PNG
-│   ├── Code Generator.PNG
-│   ├── Collections.PNG
-│   ├── Explore APIs.PNG
-│   ├── Favorites.PNG
-│   ├── Home.PNG
-│   └── Playground.PNG
-│
-├── src/
-│   ├── components/
-│   │   ├── common/
-│   │   └── layout/
-│   │
-│   ├── data/
-│   │   └── apis.ts
-│   │
-│   ├── hooks/
-│   │   └── useLocalState.ts
-│   │
-│   ├── lib/
-│   │   ├── storage.ts
-│   │   └── supabase.ts
-│   │
-│   ├── pages/
-│   │   ├── Admin.tsx
-│   │   ├── ApiDetails.tsx
-│   │   ├── ApiStatus.tsx
-│   │   ├── Categories.tsx
-│   │   ├── CodeGenerator.tsx
-│   │   ├── Collections.tsx
-│   │   ├── Explore.tsx
-│   │   ├── Favorites.tsx
-│   │   ├── Home.tsx
-│   │   └── Playground.tsx
-│   │
-│   ├── types/
-│   │   └── index.ts
-│   │
-│   ├── App.tsx
-│   ├── index.css
-│   ├── main.tsx
-│   └── vite-env.d.ts
-│
-├── supabase/
-│   ├── functions/
-│   │   └── secure-proxy/
-│   │       └── index.ts
-│   └── migrations/
-│       └── 0001_initial_schema.sql
-│
-├── .env.example
-├── .gitignore
-├── CONTRIBUTING.md
-├── index.html
-├── package.json
-├── postcss.config.js
-├── README.md
-├── tailwind.config.js
-├── tsconfig.app.json
-├── tsconfig.json
-├── tsconfig.node.json
-└── vite.config.ts
+```mermaid
+flowchart LR
+  UI[React + Vite UI] -->|direct mode, CORS applies| API[(Public APIs)]
+  UI -->|proxy mode| EF[Supabase Edge Function: secure-proxy]
+  EF -->|validated, DNS-checked, size/time capped| API
+  UI --> LS[(localStorage: favorites, collections, redacted history)]
+  UI --> CAT[Static catalog: src/data/apis.ts]
+  EF --- SSRF[_shared/ssrf.ts]
+  UI --- SSRF
 ```
 
-### Main File Responsibilities
+The SSRF rules live in one file (`supabase/functions/_shared/ssrf.ts`) shared by browser and server so they cannot drift. Pure logic (`src/lib/*`) has no React dependency and is covered by the unit tests. More detail in [docs/ARCHITECTURE.md](apihub/docs/ARCHITECTURE.md).
 
-- `src/App.tsx` - Main application component and page routing.
-- `src/main.tsx` - Application entry point.
-- `src/index.css` - Global styles.
-- `src/components/` - Reusable interface components.
-- `src/pages/` - Main application pages.
-- `src/data/apis.ts` - API directory data.
-- `src/hooks/` - Reusable React hooks.
-- `src/lib/storage.ts` - Browser storage utilities.
-- `src/lib/supabase.ts` - Supabase client configuration.
-- `src/types/` - TypeScript type definitions.
-- `supabase/` - Database migrations and Edge Functions.
-- `images/` - Application screenshots.
-- `README.md` - Main project documentation.
-- `CONTRIBUTING.md` - Contribution guidelines.
-- `.env.example` - Example environment configuration.
+## 🗂️ Catalog data
 
----
+The catalog is a typed list in `apihub/src/data/apis.ts`. Every entry starts as **"Needs review"** with **"Not recently verified"**; nothing is marked verified without a verification date (enforced by tests). Pricing and authentication values are taken from each provider's public documentation and may change, so confirm with the provider. Categories are a plain list in the same file; add a category there and use it on at least one entry (a test enforces both directions). To contribute an API, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## 🧠 Project Objectives
+## ☁️ Deployment
 
-APIHUB aims to help developers:
+**Frontend (Vercel):** import the repository, set **Root Directory** to `apihub`, framework preset *Vite*. `vercel.json` provides SPA rewrites, security headers and long-lived asset caching. Set `VITE_SITE_URL` (and the Supabase variables if you use the proxy).
 
-- Discover useful APIs more efficiently.
-- Understand how external APIs work.
-- Experiment with API requests.
-- Generate code for API integrations.
-- Organize API resources.
-- Reduce repetitive development tasks.
-- Explore new tools and services.
-- Build projects using external data and services.
+**Backend (optional):**
 
----
+```bash
+supabase link --project-ref YOUR-PROJECT-REF
+supabase db push                                  # applies migrations 0001 and 0002
+supabase secrets set ALLOWED_ORIGINS=https://your-site.vercel.app
+supabase functions deploy secure-proxy
+```
+
+Keep JWT verification enabled for the function (the default); the browser client sends the anon key.
+
+## 🩺 Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| Playground shows "browser could not complete the request" | Almost always CORS. Use "APIHub proxy" mode if configured. |
+| "APIHub proxy (not configured)" | `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` are missing or the dev server was not restarted after editing `.env.local`. |
+| Proxy returns 403 | Your site's origin is not listed in `ALLOWED_ORIGINS`. |
+| Proxy returns 429 | Per-client rate limit reached; wait for `Retry-After`. |
+| `npm test` fails with "unknown option --experimental-strip-types" | Use Node 22.6 or newer. |
+| Favorites from an older version disappeared | Merged duplicate entries are migrated automatically; clearing site data resets all local state. |
 
 ## ⚠️ Limitations
 
-- External API availability is not controlled by APIHUB.
-- Some APIs require authentication or API keys.
-- Browser security and CORS restrictions may prevent certain requests.
-- API providers may enforce request limits.
-- Some API information may need manual updates.
-- Locally stored information may not automatically synchronize across devices.
-- Backend-dependent features require the appropriate Supabase configuration.
-- Generated code may need adjustments before production use.
+- External API availability, CORS and rate limits are outside APIHub's control.
+- Favorites, collections and history are stored per browser; there is no account sync.
+- The admin page is a local demo, not an authenticated console. Do not expose real moderation actions until Supabase Auth and role checks are configured.
+- The catalog is small and unverified by default; there is no automated link-checking job yet.
+- The edge function's rate limiter is in-memory per isolate, a best-effort brake rather than a global quota.
+- There are no browser-level (component or end-to-end) tests yet, and the screenshots in `images/` may predate the latest UI changes.
 
----
+## 🔮 Roadmap
 
-## 🔮 Future Development
-
-Possible improvements and future features include:
-
-- [ ] Expand the API directory.
-- [ ] Add more API categories and filters.
-- [ ] Improve API documentation previews.
-- [ ] Add additional request methods and configuration options.
-- [ ] Support more code generation languages.
-- [ ] Improve API response formatting.
-- [ ] Add request history.
-- [ ] Improve API health monitoring.
-- [ ] Expand API submission and moderation workflows.
-- [ ] Add user authentication.
-- [ ] Improve cloud-based collections and favorites.
-- [ ] Add API comparison tools.
-- [ ] Improve mobile responsiveness.
-- [ ] Add more developer utilities.
-
----
+- [ ] Scheduled verification job that records real check results and dates.
+- [ ] Playwright end-to-end tests for search, filters, playground, favorites, collections and theme switching.
+- [ ] Authenticated persistence for favorites and collections via Supabase.
+- [ ] Broader catalog with provider-licensed data and attribution.
+- [ ] Refreshed screenshots.
 
 ## 🤝 Contributing
 
-Contributions, suggestions, and improvements are welcome!
+Contributions, suggestions, and improvements are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
 
-You can help improve APIHUB by:
+## 👨‍💻 Project links
 
-- Reporting bugs.
-- Suggesting new features.
-- Adding useful APIs.
-- Improving API information and categorization.
-- Enhancing the Playground.
-- Improving code generation.
-- Improving the user interface.
-- Updating documentation.
+- Website: [APIHUB](https://api-hub-puce.vercel.app/)
+- Developer: [@rheillunio2-byte](https://github.com/rheillunio2-byte)
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
+## 📄 License
 
----
-
-## 🔒 Privacy and Security
-
-APIHUB interacts with external APIs and may use local browser storage and Supabase functionality.
-
-- Do not commit API keys, passwords, or private credentials.
-- Keep secret credentials on a secure backend.
-- Do not expose service-role keys in frontend code.
-- Review the privacy policies of external API providers.
-- Avoid storing sensitive personal information.
-- Configure Supabase environment variables securely.
-- Be aware that clearing browser data may remove locally saved information.
-
----
-
-## 👨‍💻 Developer
-
-**Developed by RETL**
-
-GitHub: [@rheillunio2-byte](https://github.com/rheillunio2-byte)
-
-You can view the website by clicking the link button. [LINK](https://api-hub-puce.vercel.app/)
-
-APIHUB is an independent project created to make API discovery, testing, and integration more accessible and convenient for developers.
-
----
-
-## 📜 License
-
-This project is licensed under the MIT License. See the [LICENSE](https://github.com/rheillunio2-byte/APIHub?tab=MIT-1-ov-file) file for details.
-
----
-
-**Discover APIs. Test ideas. Build faster.** ✦
+MIT. See [LICENSE](LICENSE).
