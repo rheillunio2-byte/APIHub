@@ -181,7 +181,12 @@ cp .env.example .env.local   # optional; the app runs without it
 npm run dev                  # http://localhost:5173
 ```
 
-On Windows PowerShell use `npm.cmd` if script execution is restricted.
+On Windows PowerShell, use `npm.cmd` if script execution is restricted:
+
+```powershell
+npm.cmd install
+npm.cmd run dev
+```
 
 ### Environment variables
 
@@ -279,6 +284,15 @@ Keep JWT verification enabled for the function (the default); the browser client
 - [ ] Authenticated persistence for favorites and collections via Supabase.
 - [ ] Broader catalog with provider-licensed data and attribution.
 - [ ] Refreshed screenshots.
+
+## 🤝 Contributing
+
+Contributions, suggestions, and improvements are welcome. Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting changes.
+
+## 👨‍💻 Project links
+
+- Website: [APIHUB](https://api-hub-puce.vercel.app/)
+- Developer: [@rheillunio2-byte](https://github.com/rheillunio2-byte)
 
 ## 📄 License
 
