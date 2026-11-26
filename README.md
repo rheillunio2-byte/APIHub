@@ -178,7 +178,7 @@ git clone https://github.com/rheillunio2-byte/APIHub.git
 **2. Navigate to the project folder**
 
 ```bash
-cd APIHub
+cd APIHub/apihub
 ```
 
 **3. Install dependencies**
@@ -190,7 +190,7 @@ npm install
 If you're using Windows PowerShell and encounter an execution policy error with `npm`, use:
 
 ```powershell
-npm.cmd install
+npm run dev
 ```
 
 **4. Start the development server**
